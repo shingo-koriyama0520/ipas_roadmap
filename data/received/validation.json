@@ -1,0 +1,146 @@
+{
+  "zip_crc_ok": true,
+  "unsafe_archive_paths": false,
+  "pdf_count": 12,
+  "total_pdf_pages": 322,
+  "ocr_pages": 316,
+  "matched_records": 600,
+  "text_verified_records": 0,
+  "choices_separated_records": 0,
+  "years": [
+    {
+      "year": 2021,
+      "question_pdf_pages": 50,
+      "answer_pdf_pages": 1,
+      "questions": 100,
+      "answers": 100,
+      "matched": 100,
+      "missing_questions": [],
+      "missing_answers": [],
+      "duplicate_numbers": [],
+      "number_corrections": 1
+    },
+    {
+      "year": 2022,
+      "question_pdf_pages": 52,
+      "answer_pdf_pages": 1,
+      "questions": 100,
+      "answers": 100,
+      "matched": 100,
+      "missing_questions": [],
+      "missing_answers": [],
+      "duplicate_numbers": [],
+      "number_corrections": 2
+    },
+    {
+      "year": 2023,
+      "question_pdf_pages": 52,
+      "answer_pdf_pages": 1,
+      "questions": 100,
+      "answers": 100,
+      "matched": 100,
+      "missing_questions": [],
+      "missing_answers": [],
+      "duplicate_numbers": [],
+      "number_corrections": 3
+    },
+    {
+      "year": 2024,
+      "question_pdf_pages": 52,
+      "answer_pdf_pages": 1,
+      "questions": 100,
+      "answers": 100,
+      "matched": 100,
+      "missing_questions": [],
+      "missing_answers": [],
+      "duplicate_numbers": [],
+      "number_corrections": 2
+    },
+    {
+      "year": 2025,
+      "question_pdf_pages": 54,
+      "answer_pdf_pages": 1,
+      "questions": 100,
+      "answers": 100,
+      "matched": 100,
+      "missing_questions": [],
+      "missing_answers": [],
+      "duplicate_numbers": [],
+      "number_corrections": 1
+    },
+    {
+      "year": 2026,
+      "question_pdf_pages": 56,
+      "answer_pdf_pages": 1,
+      "questions": 100,
+      "answers": 100,
+      "matched": 100,
+      "missing_questions": [],
+      "missing_answers": [],
+      "duplicate_numbers": [],
+      "number_corrections": 3
+    }
+  ],
+  "corrections": [
+    {
+      "year": 2021,
+      "question_number": 92,
+      "note": "番号と本文のIoTのIが連結。原画像で問92を確認。"
+    },
+    {
+      "year": 2022,
+      "question_number": 50,
+      "note": "番号と本文の120kが連結。原画像で問50を確認。"
+    },
+    {
+      "year": 2022,
+      "question_number": 99,
+      "note": "番号と本文の1台が連結。原画像で問99を確認。"
+    },
+    {
+      "year": 2023,
+      "question_number": 61,
+      "note": "番号のOCR欠落。原画像で問61を確認。"
+    },
+    {
+      "year": 2023,
+      "question_number": 90,
+      "note": "問90が問囲と誤読。原画像で確認。"
+    },
+    {
+      "year": 2023,
+      "question_number": 100,
+      "note": "問100が問1と誤読。原画像で確認。"
+    },
+    {
+      "year": 2024,
+      "question_number": 31,
+      "note": "番号欠落と本文の縦方向誤認。原画像で問31を確認。本文は要再校正。"
+    },
+    {
+      "year": 2024,
+      "question_number": 100,
+      "note": "問100が問1囲と誤読。原画像で確認。"
+    },
+    {
+      "year": 2025,
+      "question_number": 100,
+      "note": "問100が問1囲と誤読。原画像で確認。"
+    },
+    {
+      "year": 2026,
+      "question_number": 8,
+      "note": "問8と本文のIoTのIが連結。原画像で確認。"
+    },
+    {
+      "year": 2026,
+      "question_number": 20,
+      "note": "問20が問四と誤読。原画像で確認。"
+    },
+    {
+      "year": 2026,
+      "question_number": 31,
+      "note": "番号のOCR欠落。原画像で問31を確認。"
+    }
+  ]
+}

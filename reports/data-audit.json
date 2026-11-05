@@ -1,0 +1,38 @@
+{
+  "encoding": "UTF-8 (strict)",
+  "sha256": "0e8cac9776dc0426faa6bb819a9d3e3f35a49c419a3788dd144b0f2c683eb1c1",
+  "columns": [
+    "id",
+    "year",
+    "question_number",
+    "official_answer",
+    "question_pdf",
+    "question_pdf_page",
+    "answer_pdf",
+    "answer_pdf_page",
+    "text_status",
+    "choice_status",
+    "number_correction_note",
+    "question_and_choices_ocr"
+  ],
+  "total": 600,
+  "years": {
+    "2021": 100,
+    "2022": 100,
+    "2023": 100,
+    "2024": 100,
+    "2025": 100,
+    "2026": 100
+  },
+  "duplicate_ids": 0,
+  "duplicate_texts": 0,
+  "missing_text": 0,
+  "safely_split_choices": 0,
+  "valid_answer_values": 600,
+  "independently_matched_answers": 0,
+  "diagram_suspected": 146,
+  "confirmed_missing_diagrams": null,
+  "repair_required": 600,
+  "publishable": 0,
+  "note": "図表件数はキーワードによる候補数。PDF目視・公式正答照合・人による解説検証は未実施。"
+}
