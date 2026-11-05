@@ -1,0 +1,9 @@
+name = "it-passport-14days"
+pages_build_output_dir = "public"
+compatibility_date = "2026-11-05"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "it-passport"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"

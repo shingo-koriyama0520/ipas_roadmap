@@ -1,0 +1,10 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,email TEXT UNIQUE NOT NULL,role TEXT NOT NULL DEFAULT 'learner' CHECK(role IN ('learner','admin')),started_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS login_tokens(token_hash TEXT PRIMARY KEY,email TEXT NOT NULL,expires INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS rate_limits(key TEXT PRIMARY KEY,count INTEGER NOT NULL,expires INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS questions(id TEXT PRIMARY KEY,year INTEGER NOT NULL,number INTEGER NOT NULL,prompt TEXT,choices TEXT NOT NULL,answer INTEGER,domain TEXT,status TEXT NOT NULL DEFAULT 'needs_review',explanation_status TEXT NOT NULL DEFAULT 'not_generated',explanation TEXT,reviewer TEXT,reviewed_at TEXT,source TEXT NOT NULL,issues TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS answers(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),question_id TEXT NOT NULL REFERENCES questions(id),selected INTEGER NOT NULL CHECK(selected BETWEEN 0 AND 3),correct INTEGER NOT NULL CHECK(correct IN (0,1)),created_at TEXT NOT NULL,mode TEXT NOT NULL CHECK(mode IN ('study','review','exam')));
+CREATE INDEX IF NOT EXISTS answers_user ON answers(user_id,created_at);
+CREATE TABLE IF NOT EXISTS days(user_id TEXT NOT NULL REFERENCES users(id),day INTEGER NOT NULL CHECK(day BETWEEN 1 AND 14),completed_at TEXT NOT NULL,PRIMARY KEY(user_id,day));
+CREATE TABLE IF NOT EXISTS exams(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),question_ids TEXT NOT NULL,selections TEXT NOT NULL DEFAULT '{}',split INTEGER NOT NULL DEFAULT 0,remaining INTEGER NOT NULL DEFAULT 7200000,running_since INTEGER,status TEXT NOT NULL DEFAULT 'running',result TEXT,created_at TEXT NOT NULL);
