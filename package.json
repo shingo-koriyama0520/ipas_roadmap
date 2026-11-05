@@ -4,17 +4,19 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/dev.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --experimental-test-isolation=none --test tests/*.test.mjs",
     "audit": "py -3 scripts/audit.py",
     "db:import": "node scripts/import.mjs",
-    "check": "node --check public/app.js && node --check lib/api.mjs",
-    "format": "prettier --write public lib functions scripts/*.mjs tests package.json .prettierrc.json",
-    "format:check": "prettier --check public lib functions scripts/*.mjs tests package.json .prettierrc.json"
+    "check": "node --check public/app.js && node --check lib/api.mjs && node --check lib/domain.mjs && node --check lib/importer.mjs && node --check scripts/import.mjs",
+    "format": "prettier --write \"public/**/*.{html,css,js}\" \"lib/**/*.mjs\" \"functions/**/*.js\" \"scripts/*.mjs\" \"tests/*.mjs\" package.json .prettierrc.json",
+    "format:check": "prettier --check \"public/**/*.{html,css,js}\" \"lib/**/*.mjs\" \"functions/**/*.js\" \"scripts/*.mjs\" \"tests/*.mjs\" package.json .prettierrc.json",
+    "db:validate": "node scripts/import.mjs --validate-only"
   },
   "engines": {
     "node": ">=22.13"
   },
   "devDependencies": {
-    "prettier": "^3.9.10"
+    "prettier": "^3.9.10",
+    "wrangler": "^4.157.0"
   }
 }

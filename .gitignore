@@ -3,4 +3,13 @@
 node_modules/
 .dev.vars
 .env
+.env.*
+.dev.vars.*
 .wrangler/
+data/
+reports/
+*.csv
+*.pdf
+*.zip
+*.sql
+!migrations/*.sql

@@ -1,9 +1,9 @@
 """Fail-closed import. No OCR correction or invented answers."""
-import csv, json, re, collections, pathlib, hashlib
+import csv, json, re, collections, pathlib, hashlib, io
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 raw = (ROOT / 'it_passport_2021_2026.csv').read_bytes()
 text = raw.decode('utf-8-sig', errors='strict')
-rows = list(csv.DictReader(text.splitlines()))
+rows = list(csv.DictReader(io.StringIO(text)))
 ids = collections.Counter(r['id'] for r in rows)
 texts = collections.Counter(r['question_and_choices_ocr'] for r in rows)
 items = []
