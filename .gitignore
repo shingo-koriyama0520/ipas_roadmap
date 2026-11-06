@@ -13,3 +13,5 @@ reports/
 *.zip
 *.sql
 !migrations/*.sql
+__pycache__/
+*.pyc

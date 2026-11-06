@@ -1,3 +1,5 @@
+import { createLearningClient } from './learning.mjs';
+const api = createLearningClient(localStorage);
 const $ = (s) => document.querySelector(s),
   app = $('#app');
 const titles = [
@@ -21,7 +23,7 @@ const esc = (x) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
   );
-let user = null,
+let examSize = 98,
   catalog = [],
   history = { answers: [], days: [], exams: [] },
   page = 'home',
@@ -39,17 +41,6 @@ function toast(s) {
   $('#notice').textContent = s;
   clearTimeout(toast.t);
   toast.t = setTimeout(() => ($('#notice').textContent = ''), 6000);
-}
-async function api(path, body) {
-  const r = await fetch('/api' + path, {
-    credentials: 'same-origin',
-    headers: body ? { 'Content-Type': 'application/json' } : {},
-    method: body ? 'POST' : 'GET',
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  const v = await r.json();
-  if (!r.ok) throw Error(v.error || '通信に失敗しました');
-  return v;
 }
 function metric(label, value, unit = '') {
   return /* HTML */ `
@@ -74,12 +65,10 @@ const todayAnswers = () =>
       new Date(a.created_at).toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' }) === today(),
   );
 async function refresh() {
-  if (user) {
-    [catalog, history] = await Promise.all([
-      api('/catalog').then((v) => v.questions),
-      api('/history'),
-    ]);
-  }
+  [catalog, history] = await Promise.all([
+    api('/catalog').then((v) => v.questions),
+    api('/history'),
+  ]);
 }
 function empty(title, text) {
   return /* HTML */ `
@@ -91,27 +80,6 @@ function empty(title, text) {
     </div>
   `;
 }
-function account() {
-  $('#account-label').textContent = user ? user.email : '14日間、できることをひとつずつ。';
-  $('#account-button').textContent = user ? 'ログアウト' : 'ログイン';
-}
-$('#account-button').onclick = async () => {
-  if (user) {
-    try {
-      await api('/auth/logout', {});
-      user = null;
-      catalog = [];
-      history = { answers: [], days: [], exams: [] };
-      account();
-      location.hash = 'home';
-      render();
-    } catch (e) {
-      toast(e.message);
-    }
-  } else {
-    location.hash = 'login';
-  }
-};
 function weak() {
   const grouped = {};
   for (const a of history.answers) {
@@ -151,7 +119,7 @@ function home() {
             ${d === 1 ? 'まずは今の理解を知るところから。知らない言葉も、少しずつ身につけていきましょう。' : '未完了の学習から再開できます。復習を重ねて、理解を確かめましょう。'}
           </p>
           <div class="actions">
-            <a class="primary" href="${user ? '#study' : '#login'}">
+            <a class="primary" href="#study">
               ${n ? '学習を続ける' : '今日の学習をはじめる'}
               <span>→</span>
             </a>
@@ -178,7 +146,7 @@ function home() {
           <p class="muted">
             初回診断・模擬試験日は専用プラン。終わらなかった学習は、翌日以降に続けられます。
           </p>
-          ${user ? '<button class="secondary" id="complete-day">今日の学習を完了する</button>' : ''}
+          <button class="secondary" id="complete-day">今日の学習を完了する</button>
         </div>
       </section>
       <aside>
@@ -218,60 +186,7 @@ function home() {
 function reviewCount() {
   return new Set(history.answers.filter((a) => !a.correct).map((a) => a.question_id)).size;
 }
-function login() {
-  app.innerHTML = /* HTML */ `
-    <section class="card login">
-      <div class="eyebrow">WELCOME TO IPAS ROADMAP</div>
-      <h1>学びの続きを、ここから。</h1>
-      <p class="muted">
-        メールで届くリンクからログインできます。学習履歴はアカウントごとに保存されます。
-      </p>
-      <form id="login-form">
-        <label class="field">
-          メールアドレス
-          <input
-            type="email"
-            name="email"
-            autocomplete="email"
-            required
-            maxlength="254"
-            placeholder="you@example.com"
-          />
-        </label>
-        <button class="primary">ログインリンクを送信 →</button>
-      </form>
-      <div id="mail-message" aria-live="polite"></div>
-      <p class="muted">リンクの有効期限は15分です。</p>
-    </section>
-  `;
-  $('#login-form').onsubmit = async (e) => {
-    e.preventDefault();
-    const btn = e.target.querySelector('button');
-    btn.disabled = true;
-    try {
-      const email = e.target.email.value.trim().toLowerCase();
-      const v = await api('/auth/request', { email });
-      $('#mail-message').textContent = v.message;
-      if (v.local) {
-        const m = await api('/dev/mail?email=' + encodeURIComponent(email));
-        const a = document.createElement('a');
-        a.href = m.link;
-        a.className = 'secondary';
-        a.textContent = '開発用：ログインメールを開く';
-        $('#mail-message').append(document.createElement('br'), a);
-      }
-    } catch (e) {
-      toast(e.message);
-    } finally {
-      btn.disabled = false;
-    }
-  };
-}
 async function study(review = false) {
-  if (!user) {
-    login();
-    return;
-  }
   queue = review ? (await api('/review')).questions : [...catalog];
   index = 0;
   selected = null;
@@ -291,8 +206,14 @@ async function study(review = false) {
   }
   question();
 }
-function question() {
-  const q = queue[index];
+async function question() {
+  let q;
+  try {
+    q = await api('/questions/' + queue[index].id);
+  } catch (error) {
+    app.innerHTML = empty('問題を取得できません', error.message);
+    return;
+  }
   app.innerHTML = /* HTML */ `
     <section class="question">
       <div class="eyebrow">
@@ -364,55 +285,21 @@ function question() {
 async function saveAnswer() {
   const btn = $('#confirm');
   btn.disabled = true;
-  const q = queue[index];
-  const key = 'ippo-pending-' + user.id;
-  let payload;
   try {
-    const old = JSON.parse(localStorage.getItem(key) || 'null');
-    if (old && (old.question_id !== q.id || old.selected !== selected || old.mode !== page)) {
-      throw Error('未送信の回答があります。先に再送してください');
-    }
-    payload = old || {
+    feedback = await api('/answers', {
       id: crypto.randomUUID(),
-      question_id: q.id,
+      question_id: queue[index].id,
       selected,
       mode: page === 'review' ? 'review' : 'study',
-    };
-    localStorage.setItem(key, JSON.stringify(payload));
-    feedback = await api('/answers', payload);
-    localStorage.removeItem(key);
+    });
     await refresh();
-    question();
-  } catch (e) {
-    toast('保存できませんでした：' + e.message);
+    await question();
+  } catch (error) {
+    toast(error.message);
     btn.disabled = false;
-    btn.textContent = '回答を再送する';
-  }
-}
-async function retryPending() {
-  if (!user) return;
-  const key = 'ippo-pending-' + user.id;
-  let p;
-  try {
-    p = JSON.parse(localStorage.getItem(key) || 'null');
-  } catch {
-    return;
-  }
-  if (p) {
-    try {
-      await api('/answers', p);
-      localStorage.removeItem(key);
-      toast('未送信の回答を保存しました');
-    } catch {
-      toast('未送信の回答があります。通信回復後に再読み込みして再送してください');
-    }
   }
 }
 function stats() {
-  if (!user) {
-    login();
-    return;
-  }
   const h = history.answers;
   app.innerHTML = /* HTML */ `
     <div class="eyebrow">LEARNING INSIGHTS</div>
@@ -503,15 +390,11 @@ function bar(label, a) {
   `;
 }
 async function examStart() {
-  if (!user) {
-    login();
-    return;
-  }
   const active = history.exams.find((e) => e.status !== 'submitted');
   app.innerHTML = /* HTML */ `
     <div class="eyebrow">MOCK EXAM</div>
     <h1>今の力を、確かめよう。</h1>
-    <p class="muted">100問・120分。提出するまで正解は表示されません。</p>
+    <p class="muted">${examSize}問・120分。提出するまで正解は表示されません。</p>
     <div class="grid">
       <div class="card">
         <h2>自分に合った受け方で。</h2>
@@ -530,15 +413,15 @@ async function examStart() {
         <button
           class="primary"
           id="exam-start"
-          ${!active && catalog.length < 100 ? 'disabled' : ''}
+          ${!active && catalog.length < examSize ? 'disabled' : ''}
         >
           ${active ? '中断中の試験を開く' : '模擬試験をはじめる'} →
         </button>
         ${
-          catalog.length < 100
+          catalog.length < examSize
             ? /* HTML */ `
                 <div class="callout">
-                  開始には検証済み問題が100問必要です。現在 ${catalog.length} 問です。
+                  開始には学習用問題が${examSize}問必要です。現在 ${catalog.length} 問です。
                 </div>
               `
             : ''
@@ -547,7 +430,7 @@ async function examStart() {
       <div class="card">
         <h2>受験前に</h2>
         <p class="muted">
-          通信できる環境で取り組んでください。回答は選択時にサーバーへ保存されます。通常形式では画面を閉じても時間が進みます。
+          通信できる環境で取り組んでください。回答は選択時にこのブラウザへ保存されます。通常形式では画面を閉じても時間が進みます。
         </p>
         <p class="muted">
           結果は正答数と正答率で表示します。合否や公式IRT評価点を示すものではありません。
@@ -620,7 +503,7 @@ function drawExam() {
   app.innerHTML = /* HTML */ `
     <section class="question">
       <div class="hero-top">
-        <span class="tag">模擬試験 ${examIndex + 1} / 100</span>
+        <span class="tag">模擬試験 ${examIndex + 1} / ${exam.questions.length}</span>
         <span class="timer" id="clock"></span>
       </div>
       <div class="card">
@@ -631,7 +514,11 @@ function drawExam() {
         </div>
         <div class="actions">
           <button class="secondary" id="prev" ${examIndex === 0 ? 'disabled' : ''}>← 前へ</button>
-          <button class="primary" id="exam-next" ${examIndex === 99 ? 'disabled' : ''}>
+          <button
+            class="primary"
+            id="exam-next"
+            ${examIndex === exam.questions.length - 1 ? 'disabled' : ''}
+          >
             次へ →
           </button>
         </div>
@@ -640,7 +527,7 @@ function drawExam() {
         </div>
         <div class="actions">
           <button class="secondary" id="submit-exam">
-            提出して採点（${Object.keys(exam.selections).length}/100回答済み）
+            提出して採点（${Object.keys(exam.selections).length}/${exam.questions.length}回答済み）
           </button>
         </div>
         <p class="muted" id="exam-save">回答は選択時に自動保存されます。</p>
@@ -720,7 +607,7 @@ function examResult() {
     <div class="eyebrow">EXAM RESULT</div>
     <h1>おつかれさまでした。</h1>
     <div class="metrics">
-      ${metric('正答数', exam.result.correct, '/ 100問')}${metric('正答率', exam.result.rate, '%')}${metric('未回答', 100 - Object.keys(exam.selections).length, '問')}
+      ${metric('正答数', exam.result.correct, `/ ${exam.result.total}問`)}${metric('正答率', exam.result.rate, '%')}${metric('未回答', exam.result.total - Object.keys(exam.selections).length, '問')}
     </div>
     <div class="card">
       <h2>分野別の結果</h2>
@@ -746,41 +633,6 @@ function examResult() {
     question();
   };
 }
-async function admin() {
-  if (!user) {
-    login();
-    return;
-  }
-  const [a, d] = await Promise.all([api('/admin/learners'), api('/admin/data')]);
-  app.innerHTML = /* HTML */ `
-    <div class="eyebrow">TRAINING MANAGEMENT</div>
-    <h1>研修管理</h1>
-    <p class="muted">3日以上回答のない受講者を「停滞」と表示します。</p>
-    <div class="card scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>受講者</th>
-            <th>完了日数</th>
-            <th>回答数</th>
-            <th>正答率</th>
-            <th>苦手分野</th>
-            <th>最終学習</th>
-            <th>状況</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${a.learners.map((u) => `<tr><td>${esc(u.email)}</td><td>${u.completed_days}/14</td><td>${u.total}</td><td>${u.total ? Math.round((u.correct / u.total) * 100) + '%' : '—'}</td><td>${esc(u.domains.sort((a, b) => a.correct / a.total - b.correct / b.total)[0]?.domain || '—')}</td><td>${u.last_study ? esc(new Date(u.last_study).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })) : '未学習'}</td><td>${u.stalled ? '停滞' : '学習中'}</td></tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-    <div class="card">
-      <h2>問題データの状態</h2>
-      <p>公開可能：${d.publishable}問</p>
-      ${d.counts.map((x) => `<p class="muted">${esc(x.status)} / ${esc(x.explanation_status)}：${x.count}問</p>`).join('')}
-    </div>
-  `;
-}
 async function render() {
   const rid = ++renderId;
   clearInterval(timer);
@@ -789,23 +641,11 @@ async function render() {
     .querySelectorAll('[data-page]')
     .forEach((a) => a.classList.toggle('active', a.dataset.page === page));
   try {
-    if (page.startsWith('login=')) {
-      const token = page.slice(6);
-      window.history.replaceState(null, '', '#home');
-      const v = await api('/auth/verify', { token });
-      user = v.user;
-      account();
-      await retryPending();
-      await refresh();
-      page = 'home';
-    }
     if (rid !== renderId) return;
     if (page === 'home') home();
-    else if (page === 'login') login();
     else if (page === 'study' || page === 'review') await study(page === 'review');
     else if (page === 'stats') stats();
     else if (page === 'exam') await examStart();
-    else if (page === 'admin') await admin();
     else home();
   } catch (e) {
     app.innerHTML = empty('画面を表示できません', e.message);
@@ -813,7 +653,6 @@ async function render() {
 }
 window.addEventListener('hashchange', render);
 window.addEventListener('online', async () => {
-  await retryPending();
   await refresh();
 });
 document.addEventListener('visibilitychange', () => {
@@ -821,9 +660,6 @@ document.addEventListener('visibilitychange', () => {
     openExam(exam.id).catch((e) => toast(e.message));
 });
 try {
-  ({ user } = await api('/me'));
-  account();
-  await retryPending();
   await refresh();
   await render();
 } catch (e) {

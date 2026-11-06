@@ -2,10 +2,24 @@ import http from 'node:http';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { handle } from '../lib/api.mjs';
+import { handlePublic as handle } from '../lib/public-api.mjs';
+import { importQuestions } from '../lib/importer.mjs';
+import { selectMvpQuestions } from './mvp-data.mjs';
+const mvp = process.argv.includes('--mvp');
 mkdirSync('.local', { recursive: true });
-const sqlite = new DatabaseSync('.local/app.sqlite');
+if (mvp) mkdirSync('.local/mvp-2026', { recursive: true });
+const sqlite = new DatabaseSync(mvp ? '.local/mvp-2026/app.sqlite' : '.local/app.sqlite');
 sqlite.exec(readFileSync('migrations/0001_init.sql', 'utf8'));
+let previewQuestions;
+if (mvp) {
+  previewQuestions = selectMvpQuestions(
+    JSON.parse(readFileSync('data/repair/2026/questions-repaired.json', 'utf8')),
+    JSON.parse(readFileSync('data/repair/2026/quality-decisions.json', 'utf8')),
+  );
+  const counts = importQuestions(sqlite, previewQuestions);
+  if (counts.total !== 98) throw new Error('Unexpected rows in isolated MVP database');
+  console.log(`Private MVP database: ${counts.total} review-only questions; no human approvals`);
+}
 function prepared(sql) {
   let args = [];
   return {
@@ -39,7 +53,7 @@ const DB = {
     }
   },
 };
-const port = Number(process.env.PORT || 8788),
+const port = Number(process.env.PORT || (mvp ? 8789 : 8788)),
   origin = `http://127.0.0.1:${port}`;
 const env = {
   DB,
@@ -47,10 +61,19 @@ const env = {
   mailbox: new Map(),
   APP_ORIGIN: origin,
   ADMIN_EMAILS: process.env.ADMIN_EMAILS || '',
+  ...(mvp ? { PREVIEW_QUESTION_IDS: new Set(previewQuestions.map((q) => q.id)) } : {}),
 };
 http
   .createServer(async (req, res) => {
     try {
+      if (
+        req.headers.host !== new URL(origin).host ||
+        (req.headers.origin && req.headers.origin !== origin)
+      ) {
+        res.writeHead(403);
+        res.end('Local origin required');
+        return;
+      }
       const url = new URL(req.url, origin);
       if (url.pathname.startsWith('/api/')) {
         const chunks = [];
@@ -95,6 +118,7 @@ http
           '.html': 'text/html; charset=utf-8',
           '.css': 'text/css; charset=utf-8',
           '.js': 'text/javascript; charset=utf-8',
+          '.mjs': 'text/javascript; charset=utf-8',
           '.svg': 'image/svg+xml',
         }[ext] || 'application/octet-stream',
       );

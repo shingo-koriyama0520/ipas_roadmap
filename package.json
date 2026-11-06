@@ -4,12 +4,13 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/dev.mjs",
+    "preview:mvp": "node scripts/dev.mjs --mvp",
     "test": "node --experimental-test-isolation=none --test tests/*.test.mjs",
     "audit": "py -3 scripts/audit.py",
     "db:import": "node scripts/import.mjs",
-    "check": "node --check public/app.js && node --check lib/api.mjs && node --check lib/domain.mjs && node --check lib/importer.mjs && node --check scripts/import.mjs",
-    "format": "prettier --write \"public/**/*.{html,css,js}\" \"lib/**/*.mjs\" \"functions/**/*.js\" \"scripts/*.mjs\" \"tests/*.mjs\" package.json .prettierrc.json",
-    "format:check": "prettier --check \"public/**/*.{html,css,js}\" \"lib/**/*.mjs\" \"functions/**/*.js\" \"scripts/*.mjs\" \"tests/*.mjs\" package.json .prettierrc.json",
+    "check": "node --check public/app.js && node --check public/learning.mjs && node --check lib/public-api.mjs && node --check lib/api.mjs && node --check lib/domain.mjs && node --check lib/importer.mjs && node --check scripts/import.mjs",
+    "format": "prettier --write \"public/**/*.{html,css,js,mjs}\" \"lib/**/*.mjs\" \"functions/**/*.js\" \"scripts/*.mjs\" \"tests/*.mjs\" package.json .prettierrc.json",
+    "format:check": "prettier --check \"public/**/*.{html,css,js,mjs}\" \"lib/**/*.mjs\" \"functions/**/*.js\" \"scripts/*.mjs\" \"tests/*.mjs\" package.json .prettierrc.json",
     "db:validate": "node scripts/import.mjs --validate-only"
   },
   "engines": {
