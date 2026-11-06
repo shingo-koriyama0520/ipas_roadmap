@@ -207,13 +207,19 @@ async function study(review = false) {
   question();
 }
 async function question() {
+  const requestedRender = renderId;
+  const requestedIndex = index;
+  const requestedPage = page;
+  const current = () =>
+    renderId === requestedRender && index === requestedIndex && page === requestedPage;
   let q;
   try {
     q = await api('/questions/' + queue[index].id);
   } catch (error) {
-    app.innerHTML = empty('問題を取得できません', error.message);
+    if (current()) app.innerHTML = empty('問題を取得できません', error.message);
     return;
   }
+  if (!current()) return;
   app.innerHTML = /* HTML */ `
     <section class="question">
       <div class="eyebrow">
