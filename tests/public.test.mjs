@@ -60,26 +60,20 @@ function fixture() {
   const storage = { getItem: (k) => data.get(k) || null, setItem: (k, v) => data.set(k, v) };
   return { db, env, fetcher, storage, calls };
 }
-test('公開APIは98問の目録と単問だけを返し、管理・認証・書き込みを公開しない', async () => {
+test('公開APIは100問の目録と単問だけを返し、管理・認証・書き込みを公開しない', async () => {
   const f = fixture();
   try {
     const get = (path) => handlePublic(new Request('https://example.test/api' + path), f.env);
     const catalog = await (await get('/catalog')).json();
-    assert.equal(catalog.count, 98);
+    assert.equal(catalog.count, 100);
     assert.ok(
-      catalog.questions.every(
-        (q) =>
-          !('prompt' in q) &&
-          !('answer' in q) &&
-          !('explanation' in q) &&
-          ![9, 29].includes(q.number),
-      ),
+      catalog.questions.every((q) => !('prompt' in q) && !('answer' in q) && !('explanation' in q)),
     );
     const q = await (await get('/questions/2026-001')).json();
     assert.equal(q.choices.length, 4);
     assert.ok(!('answer' in q) && !('source' in q));
-    assert.equal((await get('/questions/2026-009')).status, 404);
-    assert.equal((await get('/questions/2026-029/solution')).status, 404);
+    assert.equal((await get('/questions/2026-009')).status, 200);
+    assert.equal((await get('/questions/2026-029/solution')).status, 200);
     for (const path of [
       '/admin/data',
       '/admin/learners',
@@ -99,13 +93,13 @@ test('公開APIは98問の目録と単問だけを返し、管理・認証・書
     f.db.close();
   }
 });
-test('ブラウザ保存は回答・14日進捗・98問模試・再読込・別ブラウザの分離を維持する', async () => {
+test('ブラウザ保存は回答・14日進捗・100問模試・再読込・別ブラウザの分離を維持する', async () => {
   const f = fixture();
   let clock = Date.now();
   let client = createLearningClient(f.storage, f.fetcher, () => clock);
   try {
     const questions = (await client('/catalog')).questions;
-    assert.equal(questions.length, 98);
+    assert.equal(questions.length, 100);
     await assert.rejects(client('/days/complete', { day: 1 }), /学習後/);
     for (let day = 1; day <= 14; day++) {
       const result = await client('/answers', {
@@ -123,15 +117,15 @@ test('ブラウザ保存は回答・14日進捗・98問模試・再読込・別�
     }
     const { id } = await client('/exams', { split: false });
     const exam = await client('/exams/' + id);
-    assert.equal(exam.questions.length, 98);
+    assert.equal(exam.questions.length, 100);
     assert.ok(!exam.solutions);
     await client('/exams/' + id + '/answer', { question_id: exam.questions[0].id, selected: 0 });
     client = createLearningClient(f.storage, f.fetcher, () => clock);
     assert.equal(Object.keys((await client('/exams/' + id)).selections).length, 1);
     const result = await client('/exams/' + id + '/submit', {});
     assert.equal(result.result.correct, 1);
-    assert.equal(result.result.total, 98);
-    assert.equal(result.solutions.length, 98);
+    assert.equal(result.result.total, 100);
+    assert.equal(result.solutions.length, 100);
     await client('/exams/' + id + '/submit', {});
     assert.equal((await client('/history')).answers.length, 15);
     const split = await client('/exams', { split: true });
@@ -171,6 +165,58 @@ test('保存失敗・破損を成功扱いにしない', async () => {
       createLearningClient({ getItem: () => '{bad' }, f.fetcher)('/history'),
       /読み込めません/,
     );
+  } finally {
+    f.db.close();
+  }
+});
+
+test('旧98問の回答・進捗・実施中模試を上書きせず再開し、新規模試は100問にする', async () => {
+  const f = fixture();
+  try {
+    const ids = Array.from({ length: 100 }, (_, i) => i + 1)
+      .filter((n) => ![9, 29].includes(n))
+      .map((n) => `2026-${String(n).padStart(3, '0')}`);
+    const legacy = {
+      version: 1,
+      answers: [
+        {
+          id: 'legacy-answer',
+          question_id: ids[0],
+          selected: 0,
+          correct: true,
+          mode: 'study',
+          created_at: new Date().toISOString(),
+        },
+      ],
+      days: [{ day: 1, completed_at: new Date().toISOString(), answeredThrough: 1 }],
+      exams: [
+        {
+          id: 'legacy-exam',
+          ids,
+          selections: { [ids[0]]: 0 },
+          split: false,
+          remaining: 7200000,
+          running_since: Date.now(),
+          status: 'running',
+          created_at: new Date().toISOString(),
+        },
+      ],
+    };
+    f.storage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+    const client = createLearningClient(f.storage, f.fetcher);
+    assert.deepEqual(await client('/history'), legacy);
+    assert.equal((await client('/exams', { split: false })).id, 'legacy-exam');
+    assert.equal((await client('/exams/legacy-exam')).questions.length, 98);
+    const result = await client('/exams/legacy-exam/submit', {});
+    assert.equal(result.result.total, 98);
+    assert.equal(result.result.correct, 1);
+    assert.deepEqual((await client('/history')).answers[0], legacy.answers[0]);
+    assert.deepEqual((await client('/history')).days, legacy.days);
+    const next = await client('/exams', { split: false });
+    const exam = await client('/exams/' + next.id);
+    assert.equal(exam.questions.length, 100);
+    assert.ok(exam.questions.some((q) => q.number === 9));
+    assert.ok(exam.questions.some((q) => q.number === 29));
   } finally {
     f.db.close();
   }

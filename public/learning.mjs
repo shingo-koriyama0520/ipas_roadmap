@@ -156,7 +156,7 @@ export function createLearningClient(storage, fetcher = fetch, now = Date.now) {
       const active = state.exams.find((e) => e.status !== 'submitted');
       if (active) return { id: active.id };
       const questions = await list();
-      if (questions.length !== 98) throw Error('模試には98問が必要です');
+      if (questions.length !== 100) throw Error('模試には100問が必要です');
       const ids = questions
         .map((q) => ({ id: q.id, r: crypto.getRandomValues(new Uint32Array(1))[0] }))
         .sort((a, b) => a.r - b.r)

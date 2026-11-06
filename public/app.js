@@ -23,7 +23,7 @@ const esc = (x) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
   );
-let examSize = 98,
+let examSize = 100,
   catalog = [],
   history = { answers: [], days: [], exams: [] },
   page = 'home',
