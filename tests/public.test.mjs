@@ -5,31 +5,32 @@ import { readFileSync } from 'node:fs';
 import { handlePublic } from '../lib/public-api.mjs';
 import { createLearningClient, STORAGE_KEY } from '../public/learning.mjs';
 
-function fixture() {
+function fixture(years = [2026]) {
   const db = new DatabaseSync(':memory:');
   db.exec(readFileSync('migrations/0001_init.sql', 'utf8'));
-  for (let n = 1; n <= 100; n++)
-    db.prepare('INSERT INTO questions VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(
-      `2026-${String(n).padStart(3, '0')}`,
-      2026,
-      n,
-      'Synthetic question',
-      JSON.stringify(['A', 'B', 'C', 'D']),
-      0,
-      'テクノロジ',
-      'needs_review',
-      'needs_review',
-      JSON.stringify({
-        answer: 0,
-        reasons: ['A reason', 'B reason', 'C reason', 'D reason'],
-        terms: ['Term'],
-        point: 'Point',
-      }),
-      null,
-      null,
-      '{}',
-      '[]',
-    );
+  for (const year of years)
+    for (let n = 1; n <= 100; n++)
+      db.prepare('INSERT INTO questions VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(
+        `${year}-${String(n).padStart(3, '0')}`,
+        year,
+        n,
+        'Synthetic question',
+        JSON.stringify(['A', 'B', 'C', 'D']),
+        0,
+        'テクノロジ',
+        'needs_review',
+        'needs_review',
+        JSON.stringify({
+          answer: 0,
+          reasons: ['A reason', 'B reason', 'C reason', 'D reason'],
+          terms: ['Term'],
+          point: 'Point',
+        }),
+        null,
+        null,
+        '{}',
+        '[]',
+      );
   let calls = [];
   const env = {
     DB: {
@@ -217,6 +218,42 @@ test('旧98問の回答・進捗・実施中模試を上書きせず再開し、
     assert.equal(exam.questions.length, 100);
     assert.ok(exam.questions.some((q) => q.number === 9));
     assert.ok(exam.questions.some((q) => q.number === 29));
+  } finally {
+    f.db.close();
+  }
+});
+
+test('2年度200問を取得し、旧履歴・実施中模試を維持して新規模試は100問にする', async () => {
+  const f = fixture([2024, 2025, 2026]);
+  try {
+    let client = createLearningClient(f.storage, f.fetcher);
+    const catalog = (await client('/catalog')).questions;
+    assert.equal(catalog.length, 200);
+    for (const year of [2025, 2026])
+      assert.equal(catalog.filter((q) => q.year === year).length, 100);
+    for (const id of ['2025-001', '2026-001']) {
+      const q = await client('/questions/' + id);
+      assert.equal(q.choices.length, 4);
+      const result = await client('/answers', { id, question_id: id, selected: 0, mode: 'study' });
+      assert.equal(result.correct, true);
+      assert.equal(result.explanation.reasons.length, 4);
+    }
+    await client('/days/complete', { day: 1 });
+    const first = (await client('/exams', {})).id;
+    const exam = await client('/exams/' + first);
+    assert.equal(exam.questions.length, 100);
+    assert.equal(new Set(exam.questions.map((q) => q.id)).size, 100);
+    const history = f.storage.getItem(STORAGE_KEY);
+    client = createLearningClient(f.storage, f.fetcher);
+    assert.equal((await client('/history')).answers.length, 2);
+    assert.equal((await client('/history')).days.length, 1);
+    assert.equal((await client('/exams', {})).id, first);
+    assert.equal(f.storage.getItem(STORAGE_KEY), history);
+    assert.equal(
+      (await handlePublic(new Request('https://example.test/api/questions/2024-001'), f.env))
+        .status,
+      404,
+    );
   } finally {
     f.db.close();
   }
