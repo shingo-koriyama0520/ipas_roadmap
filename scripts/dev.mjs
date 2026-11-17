@@ -57,11 +57,7 @@ const port = Number(process.env.PORT || (mvp ? 8789 : 8788)),
   origin = `http://127.0.0.1:${port}`;
 const env = {
   DB,
-  LOCAL_DEVELOPMENT: true,
-  mailbox: new Map(),
   APP_ORIGIN: origin,
-  ADMIN_EMAILS: process.env.ADMIN_EMAILS || '',
-  ...(mvp ? { PREVIEW_QUESTION_IDS: new Set(previewQuestions.map((q) => q.id)) } : {}),
 };
 http
   .createServer(async (req, res) => {

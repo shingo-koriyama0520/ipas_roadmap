@@ -9,7 +9,7 @@
 - Cloudflare Pages: `ipas-roadmap`、本番ブランチ`main`、静的配信ディレクトリ`public`。
 - D1: `it-passport`、バインディング`DB`。問題の再投入やマイグレーション実行をビルド手順に含めない。
 - Functionsの入口は`functions/api/[[path]].js`。本番は`lib/public-api.mjs`の読み取り専用APIだけを利用する。
-- `lib/api.mjs`は旧認証版のコードであり、公開Functionsからは参照しない。旧管理・認証・履歴保存APIは公開しない。
+- 旧認証版のAPI実装・専用テストは削除済み。公開Functionsは読み取り専用APIだけを使用し、学習履歴はブラウザに保存する。
 - `GET /api/catalog`は問題目録のみ。問題と解説は単問のGETで取得し、書き込みメソッドは405で拒否する。
 - 両年度とも問1〜100が対象。学習用の公開対象条件と人による内容承認は別管理で、DBの未承認状態を維持する。
 
