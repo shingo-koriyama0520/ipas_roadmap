@@ -91,26 +91,15 @@ export function createLearningClient(storage, fetcher = fetch, now = Date.now) {
     if (path === '/history') return state;
     if (path === '/review') {
       const stats = {};
-      const domains = {};
       const questions = await list();
       for (const a of state.answers) {
         const s = (stats[a.question_id] ||= { wrong: 0, last: 0 });
         if (!a.correct) s.wrong++;
         s.last = Date.parse(a.created_at);
-        const q = questions.find((q) => q.id === a.question_id);
-        if (q) {
-          const d = (domains[q.domain] ||= { n: 0, c: 0 });
-          d.n++;
-          d.c += Number(a.correct);
-        }
       }
       return {
         questions: questions
-          .filter(
-            (q) =>
-              stats[q.id]?.wrong ||
-              (domains[q.domain] && domains[q.domain].c / domains[q.domain].n < 0.6),
-          )
+          .filter((q) => stats[q.id]?.wrong)
           .sort(
             (a, b) =>
               (stats[b.id]?.wrong || 0) - (stats[a.id]?.wrong || 0) ||

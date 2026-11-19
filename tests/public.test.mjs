@@ -61,6 +61,47 @@ function fixture(years = [2026]) {
   const storage = { getItem: (k) => data.get(k) || null, setItem: (k, v) => data.set(k, v) };
   return { db, env, fetcher, storage, calls };
 }
+test('復習は誤答した問題だけを重複なく返し、苦手分野の未回答問題を追加しない', async () => {
+  const f = fixture();
+  try {
+    const state = { version: 1, answers: [], days: [], exams: [] };
+    const client = () =>
+      createLearningClient(
+        {
+          getItem: () => JSON.stringify(state),
+          setItem() {
+            throw Error('Review must not write history');
+          },
+        },
+        f.fetcher,
+      );
+    assert.equal((await client()('/review')).questions.length, 0);
+    const answer = (question_id, correct) => ({
+      question_id,
+      correct,
+      created_at: '2026-11-19T00:00:00Z',
+    });
+    state.answers.push(answer('2026-001', false));
+    assert.deepEqual(
+      (await client()('/review')).questions.map((q) => q.id),
+      ['2026-001'],
+    );
+    state.answers.push(
+      answer('2026-002', false),
+      answer('2026-001', false),
+      answer('2026-001', true),
+      answer('2026-003', true),
+      answer('2025-099', false),
+    );
+    assert.deepEqual(
+      (await client()('/review')).questions.map((q) => q.id),
+      ['2026-001', '2026-002'],
+    );
+  } finally {
+    f.db.close();
+  }
+});
+
 test('公開APIは100問の目録と単問だけを返し、管理・認証・書き込みを公開しない', async () => {
   const f = fixture();
   try {

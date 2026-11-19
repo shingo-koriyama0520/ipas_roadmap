@@ -184,7 +184,11 @@ function home() {
     };
 }
 function reviewCount() {
-  return new Set(history.answers.filter((a) => !a.correct).map((a) => a.question_id)).size;
+  return new Set(
+    history.answers
+      .filter((a) => !a.correct && catalog.some((q) => q.id === a.question_id))
+      .map((a) => a.question_id),
+  ).size;
 }
 async function study(review = false) {
   queue = review ? (await api('/review')).questions : [...catalog];
@@ -195,7 +199,7 @@ async function study(review = false) {
     app.innerHTML = empty(
       review ? '復習待ちの問題はありません' : '問題データを準備しています',
       review
-        ? '回答履歴や苦手分野に応じて復習問題を表示します。'
+        ? '間違えた問題が復習の対象になります。'
         : '確認済みの問題と解説が登録されると学習できます。',
     );
     return;
