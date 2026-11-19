@@ -24,3 +24,22 @@ __pycache__/
 *.sqlite
 *.sqlite-*
 *.log
+
+# Local workshop distribution tooling and participant guides.
+/scripts/package-workshop.mjs
+/scripts/workshop-start.mjs
+/scripts/workshop-tools.mjs
+/docs/workshop-student.md
+/docs/workshop-troubleshooting.md
+
+# GitHub contains only application sources and runtime/deployment configuration.
+/docs/
+/tests/
+/schemas/
+/.editorconfig
+/.prettierignore
+/.prettierrc.json
+/scripts/*
+!/scripts/dev.mjs
+!/scripts/import.mjs
+!/scripts/mvp-data.mjs
