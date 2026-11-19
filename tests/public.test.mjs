@@ -61,6 +61,41 @@ function fixture(years = [2026]) {
   const storage = { getItem: (k) => data.get(k) || null, setItem: (k, v) => data.set(k, v) };
   return { db, env, fetcher, storage, calls };
 }
+
+test('勉強会モードだけが6年度600問を扱い、公開版の200問制限と書き込み拒否を維持する', async () => {
+  const f = fixture([2021, 2022, 2023, 2024, 2025, 2026]);
+  const get = (path, env) => handlePublic(new Request('https://example.test/api' + path), env);
+  const workshop = { ...f.env, LOCAL_WORKSHOP: true };
+  try {
+    assert.equal((await (await get('/catalog', workshop)).json()).count, 600);
+    assert.equal((await (await get('/catalog', f.env)).json()).count, 200);
+    assert.equal(
+      (await (await get('/catalog', { ...f.env, LOCAL_WORKSHOP: 'true' })).json()).count,
+      200,
+    );
+    for (const year of [2021, 2022, 2023, 2024]) {
+      assert.equal((await get(`/questions/${year}-001`, workshop)).status, 200);
+      assert.equal((await get(`/questions/${year}-001/solution`, workshop)).status, 200);
+      assert.equal((await get(`/questions/${year}-001`, f.env)).status, 404);
+    }
+    assert.equal((await get('/questions/2020-001', workshop)).status, 404);
+    f.db
+      .prepare("UPDATE questions SET explanation_status='not_generated' WHERE id='2024-001'")
+      .run();
+    assert.equal((await get('/questions/2024-001', workshop)).status, 404);
+    assert.equal(
+      (
+        await handlePublic(
+          new Request('https://example.test/api/answers', { method: 'POST' }),
+          workshop,
+        )
+      ).status,
+      405,
+    );
+  } finally {
+    f.db.close();
+  }
+});
 test('復習は誤答した問題だけを重複なく返し、苦手分野の未回答問題を追加しない', async () => {
   const f = fixture();
   try {

@@ -15,3 +15,12 @@ reports/
 !migrations/*.sql
 __pycache__/
 *.pyc
+
+# Classroom materials and generated distribution packages stay local.
+/教材/
+/配布用/
+/過去問/
+/解答/
+*.sqlite
+*.sqlite-*
+*.log

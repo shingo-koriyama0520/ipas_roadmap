@@ -6,10 +6,33 @@ import { handlePublic as handle } from '../lib/public-api.mjs';
 import { importQuestions } from '../lib/importer.mjs';
 import { selectMvpQuestions } from './mvp-data.mjs';
 const mvp = process.argv.includes('--mvp');
+const workshop = process.argv.includes('--workshop');
+if (mvp && workshop) throw new Error('Choose either MVP or workshop mode');
 mkdirSync('.local', { recursive: true });
 if (mvp) mkdirSync('.local/mvp-2026', { recursive: true });
-const sqlite = new DatabaseSync(mvp ? '.local/mvp-2026/app.sqlite' : '.local/app.sqlite');
+if (workshop) mkdirSync('.local/workshop', { recursive: true });
+const sqlite = new DatabaseSync(
+  workshop
+    ? '.local/workshop/app.sqlite'
+    : mvp
+      ? '.local/mvp-2026/app.sqlite'
+      : '.local/app.sqlite',
+);
 sqlite.exec(readFileSync('migrations/0001_init.sql', 'utf8'));
+if (workshop) {
+  const rows = JSON.parse(readFileSync('workshop/questions.json', 'utf8'));
+  if (
+    rows.some(
+      (q) =>
+        q.status !== 'needs_review' ||
+        q.explanation_status !== 'needs_review' ||
+        q.reviewer ||
+        q.reviewed_at,
+    )
+  )
+    throw new Error('Workshop data must retain pending review status');
+  console.log('Workshop database:', importQuestions(sqlite, rows));
+}
 let previewQuestions;
 if (mvp) {
   previewQuestions = selectMvpQuestions(
@@ -53,11 +76,12 @@ const DB = {
     }
   },
 };
-const port = Number(process.env.PORT || (mvp ? 8789 : 8788)),
+const port = Number(process.env.PORT || (workshop ? 8790 : mvp ? 8789 : 8788)),
   origin = `http://127.0.0.1:${port}`;
 const env = {
   DB,
   APP_ORIGIN: origin,
+  LOCAL_WORKSHOP: workshop,
 };
 http
   .createServer(async (req, res) => {
@@ -130,5 +154,14 @@ http
     }
   })
   .listen(port, '127.0.0.1', () =>
-    console.log(`Local preview: ${origin} (development email inbox enabled; loopback only)`),
-  );
+    console.log(`Local preview: ${origin} (loopback only; Ctrl+C to stop)`),
+  )
+  .on('error', (error) => {
+    console.error(
+      error.code === 'EADDRINUSE'
+        ? `Port ${port} is already in use. Stop the other server first.`
+        : error.message,
+    );
+    sqlite.close();
+    process.exitCode = 1;
+  });
